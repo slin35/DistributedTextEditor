@@ -12,11 +12,15 @@
 <body>
 
     <!-- Create the editor container -->
-    <div id="editor">
-        <p id="content"></p>   
-    </div>
 
-    <button onclick="saveContent()">Save</button>
+    <form id="textForm" action="/save" method="POST">
+      <div><textarea style="display: none" name="history"></textarea></div>
+      <div><textarea style="display: none" name="body"></textarea></div>
+      <div id="editor">
+        <p id="content">{{.Body}}</p>
+      </div>
+      <div><input onClick="test()" type="submit" value="Save"></div>
+    </form>
 </body>
 
 <!-- Include the Quill library -->
@@ -25,15 +29,48 @@
 <!-- Initialize Quill editor -->
 <script>
   var quill = new Quill('#editor', {
-    theme: 'snow'
+    theme: 'snow',
+    placeholder: 'Type something!'
   });
-
   // getting the content from user
   var content = quill.root.children[0].innerHTML;
 
-  function saveContent() {
-       quill.root.children[0].innerHTML = "something";
-      // quill.delteText(2, 1);
+  // --- this prevents page reload but doesn't submit the form
+  // var form = document.getElementById("textForm")
+  // function handleForm(event) {
+  //   event.preventDefault();
+  // }
+  // form.addEventListener('submit', handleForm);
+
+  var deltaChanges = {"ops" : []}
+
+  quill.on('text-change', function(delta, oldDelta, source) {
+    let data = quill.getContents();
+    // --- print the delta change for this single char text change.
+    // console.log(delta)
+    if(delta["ops"].length == 1){
+      deltaChanges["ops"].push({
+        ...{"position" : -1},
+        ...{"type" : Object.keys(delta["ops"][0])[0]},
+        ...{"data" : delta["ops"][0][Object.keys(delta["ops"][0])[0]]}
+      })
+    } else {
+      deltaChanges["ops"].push({
+        ...{"position" : delta["ops"][0]["retain"]},
+        ...{"type" : Object.keys(delta["ops"][1])[0]},
+        ...{"data" : delta["ops"][1][Object.keys(delta["ops"][1])[0]]}
+      })
+    }
+    // set hidden form elements to history & body value.
+    document.getElementsByName("history")[0].value = JSON.stringify(deltaChanges)
+    document.getElementsByName("body")[0].value = JSON.stringify(data)
+    
+    // --- print what our current history value is
+    console.log(document.getElementsByName("history")[0].value)
+  })
+
+  function test() {
+    console.log("test")
   }
 
 </script>
