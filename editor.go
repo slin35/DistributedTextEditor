@@ -51,7 +51,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:    "uid",
 			Value:   strconv.Itoa(currentID),
-			Expires: time.Now().Add(120 * time.Second),
+			Expires: time.Now().Add(999999 * time.Second),
 		})
 		userTextDir[currentID] = ""
 		currentID++
