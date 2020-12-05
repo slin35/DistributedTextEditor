@@ -7,7 +7,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
+//	"time"
+	socketio "github.com/googollee/go-socket.io"
 )
 
 // Text Body - full text currently in Quill editor
@@ -46,7 +47,7 @@ func loadPage() (*Page, error) {
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := r.Cookie("uid")
+/*	_, err := r.Cookie("uid")
 	if err != nil {
 		http.SetCookie(w, &http.Cookie{
 			Name:    "uid",
@@ -58,6 +59,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Setting current client uid to : ", currentID)
 	}
 	http.Redirect(w, r, "/editor", http.StatusFound)
+*/
+	p, err := loadPage()
+	if err != nil {
+		fmt.Println("Error loading page")
+	}
+	t, _ := template.ParseFiles("index.html")
+	t.Execute(w, p)
 }
 
 func editorHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +92,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	currUID, uidErr := strconv.Atoi(cookie.Value)
 	if uidErr != nil {
 		log.Fatal(uidErr)
-	}
+	} 
 
 	// get form value for body and history
 	body := r.FormValue("body")
@@ -118,9 +126,70 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/editor", http.StatusFound)
 }
 
+
 func main() {
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/editor", editorHandler)
-	http.HandleFunc("/save", saveHandler)
+/*	http.HandleFunc("/", homeHandler)
+/	http.HandleFunc("/editor", editorHandler)
+/	http.HandleFunc("/save", saveHandler)
+/	log.Fatal(http.ListenAndServe(":8080", nil)) */
+	var curContent = ""
+/*	var curContent = map[string]interface{}{
+		"ops": map[string]interface{}{},
+	} */
+
+	server := socketio.NewServer(nil)
+
+	
+	server.OnConnect("/", func(s socketio.Conn) error {
+		fmt.Println("connected user with id ", s.ID())
+
+		if (s.ID() != "1") {
+			s.Emit("initContent", curContent)
+		}
+			
+	
+		s.Join("bcast")
+		return nil
+	})
+
+	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		fmt.Println("disconnected user with id", s.ID())
+	})
+	
+
+	server.OnEvent("/", "Content", func(s socketio.Conn, content string) {
+		curContent += "/" + content
+		
+/*		in := []byte(content)
+		var raw map[string]interface{}
+		if err := json.Unmarshal(in, &raw); err != nil {
+			panic(err)
+		}
+
+		out, _ := json.Marshal(raw)
+
+		fmt.Println(string(out))
+
+*/
+	/*	fmt.Println("getting content ", curContent, "from user with id ", s.ID())
+		s.Emit("fromServer", curContent); */
+		server.BroadcastToRoom("", "bcast", "toAll", curContent)
+	})
+
+
+	go server.Serve()
+	defer server.Close()
+
+	http.Handle("/socket.io/", server)
+
+//	http.HandleFunc("/", homeHandler)
+//	http.HandleFunc("/editor", editorHandler)
+//	http.HandleFunc("/save", saveHandler)
+	http.HandleFunc("/", func(response http.ResponseWriter, request *http.Request) {
+		http.ServeFile(response, request, "index.html")
+	})
+
+	log.Println("serving at localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }

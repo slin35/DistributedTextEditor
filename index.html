@@ -13,6 +13,7 @@
 
     <!-- Create the editor container -->
 
+    <!--
     <form id="textForm" action="/save" method="POST">
       <div><textarea style="display: none" name="history"></textarea></div>
       <div><textarea style="display: none" name="body"></textarea></div>
@@ -20,14 +21,23 @@
         <p id="content">{{.Body}}</p>
       </div>
       <div><input onClick="test()" type="submit" value="Save"></div>
-    </form>
+    </form>-->
+
+
+    
+      <div id="editor">
+        <p id="content"></p>
+      </div>
+
 </body>
 
 <!-- Include the Quill library -->
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
 <!-- Initialize Quill editor -->
 <script>
+  const socket = io();
+
   var quill = new Quill('#editor', {
     theme: 'snow',
     placeholder: 'Type something!'
@@ -45,7 +55,7 @@
   var deltaChanges = {"ops" : []}
 
   quill.on('text-change', function(delta, oldDelta, source) {
-    let data = quill.getContents();
+ /*   let data = quill.getContents();
     // --- print the delta change for this single char text change.
     // console.log(delta)
     if(delta["ops"].length == 1){
@@ -66,12 +76,40 @@
     document.getElementsByName("body")[0].value = JSON.stringify(data)
     
     // --- print what our current history value is
-    console.log(document.getElementsByName("history")[0].value)
-  })
+    console.log(document.getElementsByName("history")[0].value) */
+
+    socket.emit("Content", JSON.stringify(delta));
+  }) 
 
   function test() {
     console.log("test")
   }
+  
+  socket.on("fromServer", function(curContent) {
+    console.log("getting curContent:", curContent, "from the server ");
+  });
+
+  socket.on("toAll", function(content) {
+    console.log(content);
+  })
+
+  socket.on("initContent", function(content) {
+ /*   var res = content.split("/")
+    var unpackedContent = []
+    for (var i = 0; i < res.length; i++) {
+      if (i != 0) {
+        console.log(res[i]);
+        var a = JSON.parse(res[i]);
+        console.log(a, a["ops"]);
+
+        unpackedContent = unpackedContent.concat(a["ops"])
+      }
+    }
+      
+    console.log(unpackedContent)
+    quill.setContents(unpackedContent); */
+
+  })
 
 </script>
 
