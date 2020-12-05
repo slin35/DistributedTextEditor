@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/rpc"
 	"strconv"
 	"time"
 )
@@ -38,7 +39,19 @@ type Page struct {
 
 var currentText string = ""
 var currentID int = 0
-var userTextDir = make(map[int]string)
+var userTextDir = make(map[int]*Doc)
+
+
+
+
+
+
+
+
+
+
+
+
 
 // can refactor away, currently working..
 func loadPage() (*Page, error) {
@@ -53,7 +66,11 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 			Value:   strconv.Itoa(currentID),
 			Expires: time.Now().Add(999999 * time.Second),
 		})
-		userTextDir[currentID] = ""
+		// userTextDir[currentID].currentText = ""
+		
+		doc := Doc{"", currentID}
+		userTextDir[doc.Site] = &doc
+
 		currentID++
 		fmt.Println("Setting current client uid to : ", currentID)
 	}
@@ -75,6 +92,15 @@ func editorHandler(w http.ResponseWriter, r *http.Request) {
 func saveHandler(w http.ResponseWriter, r *http.Request) {
 	var currentBody TextBody
 	var currentHistory TextHistory
+
+
+
+	client, err := rpc.DialHTTP("tcp", "localhost:8080")
+	if err != nil {
+		log.Fatal("CONNECTION ERROR ", err)
+	}
+
+
 
 	cookie, err := r.Cookie("uid")
 	if err != nil {
@@ -101,6 +127,8 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	for _, ele := range currentBody.Ops {
 		fmt.Println(ele)
 	}
+
+	fmt.Println("TEST")
 	if len(currentBody.Ops) != 0 {
 		fmt.Printf("Insert: %s", currentBody.Ops[0].Insert)
 		for i, s := range currentHistory.Ops {
@@ -109,9 +137,21 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 
 		// --- workaround for reset page after form submit
 		currentText = currentBody.Ops[0].Insert
-		userTextDir[currUID] = currentText
+		// userTextDir[currUID].currentText = currentText
+
+		var reply Doc
+		newData := DocEdit{currentText, currUID}
+		
+		err := client.Call("DocModifier.EditDoc", newData, &reply)
+		if err != nil {
+			log.Fatal("ISSUE CHANGING DOC ", err)
+		}
+		fmt.Println("FINISHED WITH CLIENT CALL")
+		fmt.Println(reply.CurrentText)
+
+
 	} else {
-		currentText = userTextDir[currUID]
+		currentText = userTextDir[currUID].CurrentText
 	}
 
 	// redirect back to edit page
@@ -122,5 +162,9 @@ func main() {
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/editor", editorHandler)
 	http.HandleFunc("/save", saveHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	createServer()
+
+
+	// log.Fatal(http.ListenAndServe(":8080", nil))
 }
