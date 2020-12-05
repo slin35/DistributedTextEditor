@@ -78,6 +78,8 @@
     // --- print what our current history value is
     console.log(document.getElementsByName("history")[0].value) */
 
+    console.log(delta)
+    socket.emit("Delta", JSON.stringify(delta))
     socket.emit("Content", JSON.stringify(quill.getContents()));
   }) 
 
@@ -95,10 +97,10 @@
     }
     var res = JSON.parse(content);
     var text = res["ops"][0]["insert"]
-    console.log(text);
+    // console.log(text);
     quill.setText(text);
 
-    console.log(res);
+    // console.log(res);
   })
 
   socket.on("initContent", function(content) {

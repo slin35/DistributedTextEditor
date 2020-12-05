@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"math"
 //	"time"
 	socketio "github.com/googollee/go-socket.io"
 )
@@ -23,8 +24,8 @@ type TextHistory struct {
 
 type Operation struct {
 	Insert string
-	Delete string
-	Retain string
+	Delete int
+	Retain int
 }
 
 type OperData struct {
@@ -37,13 +38,85 @@ type Page struct {
 	Body string
 }
 
+// Storing array of < position identifier, character >
+type Doc struct {
+	Body []Character
+}
+
+type Identifier struct {
+	pos  int
+	site int
+}
+
+type Character struct {
+	position []Identifier
+	lamport  int
+	char     string
+}
+
 var currentText string = ""
 var currentID int = 0
 var userTextDir = make(map[int]string)
 
+var doc Doc
+
 // can refactor away, currently working..
 func loadPage() (*Page, error) {
 	return &Page{Body: currentText}, nil
+}
+
+func initBody() {
+	beg := Character{lamport: -1,
+					 char: ""}
+	beg.position[0] = Identifier{pos: 0, site: -1}
+
+	end := Character{lamport: -1,
+					 char: ""}
+	// this has to be changed to math.MaxInt32 if run on a 32 bit system
+	end.position[0] = Identifier{pos: int(math.MaxInt64), site: -1}
+
+	doc.Body[0] = beg
+	doc.Body[1] = end
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+func comparePosition(id1 []Identifier, id2 []Identifier) int {
+	for i := 0; i < min(len(id1), len(id2)); i++ {
+		idComp := compareIdentifier(id1[i], id2[i])
+		if (idComp != 0) {
+			return idComp
+		}
+	}
+
+	if (len(id1) < len(id2)) {
+		return -1
+	} else if (len(id1) > len(id2)) {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func compareIdentifier(i1 Identifier, i2 Identifier) int {
+	if (i1.pos < i2.pos) {
+		return -1
+	} else if (i1.pos > i2.pos) {
+		return 1
+	} else {
+		if (i1.site < i2.site) {
+			return -1
+		} else if (i1.site > i2.site) {
+			return 1
+		} else {
+			return 0
+		}
+	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,10 +249,41 @@ func main() {
 			curContent = content
 		}
 		if curContent != content {
+			fmt.Println(s.ID())
+			fmt.Println(content)
 			server.BroadcastToRoom("", "bcast", "toAll", content)
 			curContent = content
 		}
 
+		
+	})
+
+	server.OnEvent("/", "Delta", func(s socketio.Conn, delta string) {
+		d := []byte(delta)
+		var dlta map[string][]map[string]interface{}
+		var data []map[string]interface{}
+		if err := json.Unmarshal(d, &dlta); err != nil {
+			panic(err)
+		}
+		fmt.Print("DATA: ")
+		fmt.Println(data)
+		data = dlta["ops"]
+
+		// var op Operation
+		// for i := 0; i < len(data); i++ {
+		// 	if ret, exists := data[i]["retain"]; exists {
+		// 		op.Retain = ret.(int)
+		// 	}
+		// 	if del, exists := data[i]["delete"]; exists {
+		// 		op.Delete = del.(int)
+		// 	}
+		// 	if ins, exists := data[i]["retain"]; exists {
+		// 		op.Insert = ins.(string)
+		// 	}
+
+		// }
+
+		// fmt.Println(op)
 		
 	})
 
