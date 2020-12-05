@@ -143,11 +143,8 @@ func main() {
 	server.OnConnect("/", func(s socketio.Conn) error {
 		fmt.Println("connected user with id ", s.ID())
 
-		if (s.ID() != "1") {
-			s.Emit("initContent", curContent)
-		}
-			
-	
+		s.Emit("initContent", curContent)
+
 		s.Join("bcast")
 		return nil
 	})
@@ -158,7 +155,9 @@ func main() {
 	
 
 	server.OnEvent("/", "Content", func(s socketio.Conn, content string) {
-		curContent += "/" + content
+	//	curContent += "/" + content
+
+
 		
 /*		in := []byte(content)
 		var raw map[string]interface{}
@@ -173,7 +172,15 @@ func main() {
 */
 	/*	fmt.Println("getting content ", curContent, "from user with id ", s.ID())
 		s.Emit("fromServer", curContent); */
-		server.BroadcastToRoom("", "bcast", "toAll", curContent)
+		if curContent == "" {
+			curContent = content
+		}
+		if curContent != content {
+			server.BroadcastToRoom("", "bcast", "toAll", content)
+			curContent = content
+		}
+
+		
 	})
 
 

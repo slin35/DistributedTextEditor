@@ -36,7 +36,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
 <!-- Initialize Quill editor -->
 <script>
-  const socket = io();
+  const socket = io('ws://localhost:8080');
 
   var quill = new Quill('#editor', {
     theme: 'snow',
@@ -78,7 +78,7 @@
     // --- print what our current history value is
     console.log(document.getElementsByName("history")[0].value) */
 
-    socket.emit("Content", JSON.stringify(delta));
+    socket.emit("Content", JSON.stringify(quill.getContents()));
   }) 
 
   function test() {
@@ -90,10 +90,24 @@
   });
 
   socket.on("toAll", function(content) {
-    console.log(content);
+    if (content.length == 0) {
+      return;
+    }
+    var res = JSON.parse(content);
+    var text = res["ops"][0]["insert"]
+    console.log(text);
+    quill.setText(text);
+
+    console.log(res);
   })
 
   socket.on("initContent", function(content) {
+    if (content.length == 0) {
+      return;
+    }
+    var res = JSON.parse(content);
+    var text = res["ops"][0]["insert"]
+    quill.setText(text);
  /*   var res = content.split("/")
     var unpackedContent = []
     for (var i = 0; i < res.length; i++) {
@@ -108,7 +122,6 @@
       
     console.log(unpackedContent)
     quill.setContents(unpackedContent); */
-
   })
 
 </script>
