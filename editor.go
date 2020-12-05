@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
-	"math"
-//	"time"
+
+	//	"time"
 	socketio "github.com/googollee/go-socket.io"
 )
 
@@ -67,11 +68,11 @@ func loadPage() (*Page, error) {
 
 func initBody() {
 	beg := Character{lamport: -1,
-					 char: ""}
+		char: ""}
 	beg.position[0] = Identifier{pos: 0, site: -1}
 
 	end := Character{lamport: -1,
-					 char: ""}
+		char: ""}
 	// this has to be changed to math.MaxInt32 if run on a 32 bit system
 	end.position[0] = Identifier{pos: int(math.MaxInt64), site: -1}
 
@@ -80,23 +81,23 @@ func initBody() {
 }
 
 func min(a, b int) int {
-    if a < b {
-        return a
-    }
-    return b
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func comparePosition(id1 []Identifier, id2 []Identifier) int {
 	for i := 0; i < min(len(id1), len(id2)); i++ {
 		idComp := compareIdentifier(id1[i], id2[i])
-		if (idComp != 0) {
+		if idComp != 0 {
 			return idComp
 		}
 	}
 
-	if (len(id1) < len(id2)) {
+	if len(id1) < len(id2) {
 		return -1
-	} else if (len(id1) > len(id2)) {
+	} else if len(id1) > len(id2) {
 		return 1
 	} else {
 		return 0
@@ -104,14 +105,14 @@ func comparePosition(id1 []Identifier, id2 []Identifier) int {
 }
 
 func compareIdentifier(i1 Identifier, i2 Identifier) int {
-	if (i1.pos < i2.pos) {
+	if i1.pos < i2.pos {
 		return -1
-	} else if (i1.pos > i2.pos) {
+	} else if i1.pos > i2.pos {
 		return 1
 	} else {
-		if (i1.site < i2.site) {
+		if i1.site < i2.site {
 			return -1
-		} else if (i1.site > i2.site) {
+		} else if i1.site > i2.site {
 			return 1
 		} else {
 			return 0
@@ -120,19 +121,19 @@ func compareIdentifier(i1 Identifier, i2 Identifier) int {
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-/*	_, err := r.Cookie("uid")
-	if err != nil {
-		http.SetCookie(w, &http.Cookie{
-			Name:    "uid",
-			Value:   strconv.Itoa(currentID),
-			Expires: time.Now().Add(999999 * time.Second),
-		})
-		userTextDir[currentID] = ""
-		currentID++
-		fmt.Println("Setting current client uid to : ", currentID)
-	}
-	http.Redirect(w, r, "/editor", http.StatusFound)
-*/
+	/*	_, err := r.Cookie("uid")
+		if err != nil {
+			http.SetCookie(w, &http.Cookie{
+				Name:    "uid",
+				Value:   strconv.Itoa(currentID),
+				Expires: time.Now().Add(999999 * time.Second),
+			})
+			userTextDir[currentID] = ""
+			currentID++
+			fmt.Println("Setting current client uid to : ", currentID)
+		}
+		http.Redirect(w, r, "/editor", http.StatusFound)
+	*/
 	p, err := loadPage()
 	if err != nil {
 		fmt.Println("Error loading page")
@@ -165,7 +166,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	currUID, uidErr := strconv.Atoi(cookie.Value)
 	if uidErr != nil {
 		log.Fatal(uidErr)
-	} 
+	}
 
 	// get form value for body and history
 	body := r.FormValue("body")
@@ -199,20 +200,18 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/editor", http.StatusFound)
 }
 
-
 func main() {
-/*	http.HandleFunc("/", homeHandler)
-/	http.HandleFunc("/editor", editorHandler)
-/	http.HandleFunc("/save", saveHandler)
-/	log.Fatal(http.ListenAndServe(":8080", nil)) */
+	/*	http.HandleFunc("/", homeHandler)
+		/	http.HandleFunc("/editor", editorHandler)
+		/	http.HandleFunc("/save", saveHandler)
+		/	log.Fatal(http.ListenAndServe(":8080", nil)) */
 	var curContent = ""
-/*	var curContent = map[string]interface{}{
+	/*	var curContent = map[string]interface{}{
 		"ops": map[string]interface{}{},
 	} */
 
 	server := socketio.NewServer(nil)
 
-	
 	server.OnConnect("/", func(s socketio.Conn) error {
 		fmt.Println("connected user with id ", s.ID())
 
@@ -225,37 +224,34 @@ func main() {
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
 		fmt.Println("disconnected user with id", s.ID())
 	})
-	
 
 	server.OnEvent("/", "Content", func(s socketio.Conn, content string) {
-	//	curContent += "/" + content
+		//	curContent += "/" + content
 
+		/*		in := []byte(content)
+				var raw map[string]interface{}
+				if err := json.Unmarshal(in, &raw); err != nil {
+					panic(err)
+				}
 
-		
-/*		in := []byte(content)
-		var raw map[string]interface{}
-		if err := json.Unmarshal(in, &raw); err != nil {
-			panic(err)
-		}
+				out, _ := json.Marshal(raw)
 
-		out, _ := json.Marshal(raw)
+				fmt.Println(string(out))
 
-		fmt.Println(string(out))
-
-*/
-	/*	fmt.Println("getting content ", curContent, "from user with id ", s.ID())
-		s.Emit("fromServer", curContent); */
+		*/
+		/*	fmt.Println("getting content ", curContent, "from user with id ", s.ID())
+			s.Emit("fromServer", curContent); */
 		if curContent == "" {
 			curContent = content
 		}
 		if curContent != content {
 			fmt.Println(s.ID())
-			fmt.Println(content)
+			fmt.Println("curContent: ", curContent)
+			fmt.Println("content: ", content)
 			server.BroadcastToRoom("", "bcast", "toAll", content)
 			curContent = content
 		}
 
-		
 	})
 
 	server.OnEvent("/", "Delta", func(s socketio.Conn, delta string) {
@@ -284,18 +280,17 @@ func main() {
 		// }
 
 		// fmt.Println(op)
-		
-	})
 
+	})
 
 	go server.Serve()
 	defer server.Close()
 
 	http.Handle("/socket.io/", server)
 
-//	http.HandleFunc("/", homeHandler)
-//	http.HandleFunc("/editor", editorHandler)
-//	http.HandleFunc("/save", saveHandler)
+	//	http.HandleFunc("/", homeHandler)
+	//	http.HandleFunc("/editor", editorHandler)
+	//	http.HandleFunc("/save", saveHandler)
 	http.HandleFunc("/", func(response http.ResponseWriter, request *http.Request) {
 		http.ServeFile(response, request, "index.html")
 	})

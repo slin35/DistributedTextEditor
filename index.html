@@ -97,8 +97,15 @@
     }
     var res = JSON.parse(content);
     var text = res["ops"][0]["insert"]
+    var currContent = quill.getContents();
     // console.log(text);
-    quill.setText(text);
+    console.log("currContent: ", currContent);
+    console.log("res: ", res);
+    if(currContent["ops"][0]["insert"] != res["ops"][0]["insert"]) {
+      console.log("setting text");
+      quill.setText(text);
+    } 
+    // quill.updateContents(res);
 
     // console.log(res);
   })
