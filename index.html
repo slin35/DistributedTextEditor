@@ -37,6 +37,7 @@
 <!-- Initialize Quill editor -->
 <script>
   const socket = io('ws://localhost:8080');
+  // const socket = io('ws://192.168.0.163:8080');
 
   var quill = new Quill('#editor', {
     theme: 'snow',
@@ -55,32 +56,29 @@
   var deltaChanges = {"ops" : []}
 
   quill.on('text-change', function(delta, oldDelta, source) {
- /*   let data = quill.getContents();
+    let data = quill.getContents();
     // --- print the delta change for this single char text change.
     // console.log(delta)
-    if(delta["ops"].length == 1){
-      deltaChanges["ops"].push({
-        ...{"position" : -1},
-        ...{"type" : Object.keys(delta["ops"][0])[0]},
-        ...{"data" : delta["ops"][0][Object.keys(delta["ops"][0])[0]]}
-      })
-    } else {
-      deltaChanges["ops"].push({
-        ...{"position" : delta["ops"][0]["retain"]},
-        ...{"type" : Object.keys(delta["ops"][1])[0]},
-        ...{"data" : delta["ops"][1][Object.keys(delta["ops"][1])[0]]}
-      })
+    // if(delta["ops"].length == 1){
+    //   deltaChanges["ops"].push({
+    //     ...{"position" : -1},
+    //     ...{"type" : Object.keys(delta["ops"][0])[0]},
+    //     ...{"data" : delta["ops"][0][Object.keys(delta["ops"][0])[0]]}
+    //   })
+    // } else {
+    //   deltaChanges["ops"].push({
+    //     ...{"position" : delta["ops"][0]["retain"]},
+    //     ...{"type" : Object.keys(delta["ops"][1])[0]},
+    //     ...{"data" : delta["ops"][1][Object.keys(delta["ops"][1])[0]]}
+    //   })
+    // }
+    console.log("data: ", JSON.stringify(data));
+    console.log("text change from source:", source);
+    if(source == "user") {
+      console.log("Emitting a delta : ", JSON.stringify(delta))
+      socket.emit("Delta", JSON.stringify(delta))
+      socket.emit("Content", JSON.stringify(data));
     }
-    // set hidden form elements to history & body value.
-    document.getElementsByName("history")[0].value = JSON.stringify(deltaChanges)
-    document.getElementsByName("body")[0].value = JSON.stringify(data)
-    
-    // --- print what our current history value is
-    console.log(document.getElementsByName("history")[0].value) */
-
-    console.log(delta)
-    socket.emit("Delta", JSON.stringify(delta))
-    socket.emit("Content", JSON.stringify(quill.getContents()));
   }) 
 
   function test() {
@@ -103,11 +101,11 @@
     console.log("res: ", res);
     if(currContent["ops"][0]["insert"] != res["ops"][0]["insert"]) {
       console.log("setting text");
+      let curCursorRange = quill.getSelection()
+      console.log("selection:", quill.getSelection());
       quill.setText(text);
+      quill.setSelection(curCursorRange);
     } 
-    // quill.updateContents(res);
-
-    // console.log(res);
   })
 
   socket.on("initContent", function(content) {
@@ -132,6 +130,15 @@
     console.log(unpackedContent)
     quill.setContents(unpackedContent); */
   })
+
+  window.addEventListener('beforeunload', (event) => {
+    // Cancel the event as stated by the standard.
+    // event.preventDefault();
+    // Older browsers supported custom message
+    event.returnValue = '';
+    socket.close();
+  });
+
 
 </script>
 

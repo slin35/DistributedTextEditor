@@ -3,11 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"math"
 	"net/http"
-	"strconv"
 
 	//	"time"
 	socketio "github.com/googollee/go-socket.io"
@@ -120,85 +118,85 @@ func compareIdentifier(i1 Identifier, i2 Identifier) int {
 	}
 }
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	/*	_, err := r.Cookie("uid")
-		if err != nil {
-			http.SetCookie(w, &http.Cookie{
-				Name:    "uid",
-				Value:   strconv.Itoa(currentID),
-				Expires: time.Now().Add(999999 * time.Second),
-			})
-			userTextDir[currentID] = ""
-			currentID++
-			fmt.Println("Setting current client uid to : ", currentID)
-		}
-		http.Redirect(w, r, "/editor", http.StatusFound)
-	*/
-	p, err := loadPage()
-	if err != nil {
-		fmt.Println("Error loading page")
-	}
-	t, _ := template.ParseFiles("index.html")
-	t.Execute(w, p)
-}
+// func homeHandler(w http.ResponseWriter, r *http.Request) {
+// 	/*	_, err := r.Cookie("uid")
+// 		if err != nil {
+// 			http.SetCookie(w, &http.Cookie{
+// 				Name:    "uid",
+// 				Value:   strconv.Itoa(currentID),
+// 				Expires: time.Now().Add(999999 * time.Second),
+// 			})
+// 			userTextDir[currentID] = ""
+// 			currentID++
+// 			fmt.Println("Setting current client uid to : ", currentID)
+// 		}
+// 		http.Redirect(w, r, "/editor", http.StatusFound)
+// 	*/
+// 	p, err := loadPage()
+// 	if err != nil {
+// 		fmt.Println("Error loading page")
+// 	}
+// 	t, _ := template.ParseFiles("index.html")
+// 	t.Execute(w, p)
+// }
 
-func editorHandler(w http.ResponseWriter, r *http.Request) {
-	// title := r.URL.Path[len("/edit/"):]
+// func editorHandler(w http.ResponseWriter, r *http.Request) {
+// 	// title := r.URL.Path[len("/edit/"):]
 
-	p, err := loadPage()
-	if err != nil {
-		fmt.Println("Error loading page")
-	}
-	t, _ := template.ParseFiles("index.html")
-	t.Execute(w, p)
-}
+// 	p, err := loadPage()
+// 	if err != nil {
+// 		fmt.Println("Error loading page")
+// 	}
+// 	t, _ := template.ParseFiles("index.html")
+// 	t.Execute(w, p)
+// }
 
-// Handler to deal with "/save" endpoint which is when save button is clicked
-func saveHandler(w http.ResponseWriter, r *http.Request) {
-	var currentBody TextBody
-	var currentHistory TextHistory
+// // Handler to deal with "/save" endpoint which is when save button is clicked
+// func saveHandler(w http.ResponseWriter, r *http.Request) {
+// 	var currentBody TextBody
+// 	var currentHistory TextHistory
 
-	cookie, err := r.Cookie("uid")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(cookie)
-	currUID, uidErr := strconv.Atoi(cookie.Value)
-	if uidErr != nil {
-		log.Fatal(uidErr)
-	}
+// 	cookie, err := r.Cookie("uid")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	fmt.Println(cookie)
+// 	currUID, uidErr := strconv.Atoi(cookie.Value)
+// 	if uidErr != nil {
+// 		log.Fatal(uidErr)
+// 	}
 
-	// get form value for body and history
-	body := r.FormValue("body")
-	history := r.FormValue("history")
-	// --- string print of incoming json
-	// fmt.Println("Body: ", body)
-	// fmt.Println("History: ", history)
+// 	// get form value for body and history
+// 	body := r.FormValue("body")
+// 	history := r.FormValue("history")
+// 	// --- string print of incoming json
+// 	// fmt.Println("Body: ", body)
+// 	// fmt.Println("History: ", history)
 
-	// unmarshall into TextBody or TextHistory
-	json.Unmarshal([]byte(body), &currentBody)
-	json.Unmarshal([]byte(history), &currentHistory)
+// 	// unmarshall into TextBody or TextHistory
+// 	json.Unmarshal([]byte(body), &currentBody)
+// 	json.Unmarshal([]byte(history), &currentHistory)
 
-	// --- sample print of unmarshelled json
-	for _, ele := range currentBody.Ops {
-		fmt.Println(ele)
-	}
-	if len(currentBody.Ops) != 0 {
-		fmt.Printf("Insert: %s", currentBody.Ops[0].Insert)
-		for i, s := range currentHistory.Ops {
-			fmt.Println(i, s)
-		}
+// 	// --- sample print of unmarshelled json
+// 	for _, ele := range currentBody.Ops {
+// 		fmt.Println(ele)
+// 	}
+// 	if len(currentBody.Ops) != 0 {
+// 		fmt.Printf("Insert: %s", currentBody.Ops[0].Insert)
+// 		for i, s := range currentHistory.Ops {
+// 			fmt.Println(i, s)
+// 		}
 
-		// --- workaround for reset page after form submit
-		currentText = currentBody.Ops[0].Insert
-		userTextDir[currUID] = currentText
-	} else {
-		currentText = userTextDir[currUID]
-	}
+// 		// --- workaround for reset page after form submit
+// 		currentText = currentBody.Ops[0].Insert
+// 		userTextDir[currUID] = currentText
+// 	} else {
+// 		currentText = userTextDir[currUID]
+// 	}
 
-	// redirect back to edit page
-	http.Redirect(w, r, "/editor", http.StatusFound)
-}
+// 	// redirect back to edit page
+// 	http.Redirect(w, r, "/editor", http.StatusFound)
+// }
 
 func main() {
 	/*	http.HandleFunc("/", homeHandler)
@@ -222,7 +220,7 @@ func main() {
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		fmt.Println("disconnected user with id", s.ID())
+		fmt.Println("disconnected user with id", s.ID(), " because: ", reason)
 	})
 
 	server.OnEvent("/", "Content", func(s socketio.Conn, content string) {
@@ -245,7 +243,7 @@ func main() {
 			curContent = content
 		}
 		if curContent != content {
-			fmt.Println(s.ID())
+			fmt.Println("Receiving content from : ", s.ID())
 			fmt.Println("curContent: ", curContent)
 			fmt.Println("content: ", content)
 			server.BroadcastToRoom("", "bcast", "toAll", content)
@@ -256,14 +254,12 @@ func main() {
 
 	server.OnEvent("/", "Delta", func(s socketio.Conn, delta string) {
 		d := []byte(delta)
-		var dlta map[string][]map[string]interface{}
-		var data []map[string]interface{}
-		if err := json.Unmarshal(d, &dlta); err != nil {
+		var oneHistory TextBody
+		if err := json.Unmarshal(d, &oneHistory); err != nil {
 			panic(err)
 		}
-		fmt.Print("DATA: ")
-		fmt.Println(data)
-		data = dlta["ops"]
+		fmt.Print("RECEIVED DELTA: ")
+		fmt.Println(oneHistory)
 
 		// var op Operation
 		// for i := 0; i < len(data); i++ {
