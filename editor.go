@@ -85,6 +85,20 @@ func min(a, b int) int {
 	return b
 }
 
+func maxArrayLength(n1 []int, n2 []int) int {
+	if len(n1) < len(n2) {
+		return len(n2)
+	}
+	return len(n1)
+}
+
+func eleExists(n1 []int, index int) int {
+	if len(n1) > index {
+		return 0
+	}
+	return n1[index]
+}
+
 func comparePosition(id1 []Identifier, id2 []Identifier) int {
 	for i := 0; i < min(len(id1), len(id2)); i++ {
 		idComp := compareIdentifier(id1[i], id2[i])
@@ -116,6 +130,120 @@ func compareIdentifier(i1 Identifier, i2 Identifier) int {
 			return 0
 		}
 	}
+}
+
+func fromIdentifierList(identifiers []Identifier) []int {
+	returnArr := make([]int, len(identifiers))
+	for _, ident := range identifiers {
+		returnArr = append(returnArr, ident.pos)
+	}
+	return returnArr
+}
+
+// Arrays are representations of floats, subtract the floats
+func subtractGreaterThan(n1 []int, n2 []int) []int {
+	var carry = 0 // carry over in subtraction
+	diff := make([]int, maxArrayLength(n1, n2))
+	for i := len(diff) - 1; i >= 0; i-- {
+		var d1 int
+		var d2 int
+		d1 = eleExists(n1, i) - carry
+		d2 = eleExists(n2, i)
+		if d1 < d2 {
+			carry = 1
+			diff[i] = d1 + 256 - d2
+		} else {
+			carry = 0
+			diff[i] = d1 - d2
+		}
+	}
+	return diff
+}
+
+func add(n1 []int, n2 []int) []int {
+	var carry = 0
+	diff := make([]int, maxArrayLength(n1, n2))
+	for i := len(diff) - 1; i >= 0; i-- {
+		var sum = eleExists(n1, i) + eleExists(n2, i) + carry
+		carry = int(math.Floor(float64(sum) / 256))
+		diff[i] = sum % 256
+	}
+	if carry != 0 {
+		log.Fatal("Adding two positions results in a greater than 1 pos, this can't  be done.")
+	}
+	return diff
+}
+
+func increment(n1 []int, delta []int) []int {
+	var firstNonzero = -1
+	for i, num := range delta {
+		if num > 0 {
+			firstNonzero = i
+		}
+	}
+	var inc = append(delta[0:firstNonzero], []int{0, 1}...)
+	var v1 = add(n1, inc)
+	var v2 []int
+	if v1[len(v1)-1] == 0 {
+		v2 = add(v1, inc)
+	} else {
+		v2 = v1
+	}
+	return v2
+}
+
+func toIdentifierList(n []int, before []Identifier, after []Identifier, site int) []Identifier {
+	var returnArr []Identifier
+	for i, num := range n {
+		if i == len(n)-1 {
+			returnArr[i] = Identifier{num, site}
+		} else if i < len(before) && num == before[i].pos {
+			returnArr[i] = Identifier{num, before[i].site}
+		} else if i < len(after) && num == after[i].pos {
+			returnArr[i] = Identifier{num, after[i].site}
+		} else {
+			returnArr[i] = Identifier{num, site}
+		}
+	}
+	return returnArr
+}
+
+func generatePositionBetween(pos1 []Identifier, pos2 []Identifier, site int) []Identifier {
+	var head1 Identifier
+	var head2 Identifier
+	if len(pos1) == 0 {
+		head1 = Identifier{0, site}
+	} else {
+		head1 = pos1[0]
+	}
+	if len(pos2) == 0 {
+		head2 = Identifier{int(^uint(0) >> 1), site} // max_int
+	} else {
+		head2 = pos2[0]
+	}
+	if head1.pos != head2.pos {
+		var n1 = fromIdentifierList(pos1)
+		var n2 = fromIdentifierList(pos2)
+		var delta = subtractGreaterThan(n2, n1)
+
+		var next = increment(n1, delta)
+		return toIdentifierList(next, pos1, pos2, site)
+	} else {
+		if head1.site < head2.site {
+			sliced := pos1[1:]
+			recurPos := generatePositionBetween(sliced, []Identifier{}, site)
+			return append([]Identifier{head1}, recurPos...)
+		} else if head1.site == head2.site {
+			sliced1 := pos1[1:]
+			sliced2 := pos2[1:]
+			recurPos := generatePositionBetween(sliced1, sliced2, site)
+			return append([]Identifier{head1}, recurPos...)
+		} else {
+			log.Fatal("Cannot generate position at given site: ", site)
+		}
+	}
+
+	return nil
 }
 
 // func homeHandler(w http.ResponseWriter, r *http.Request) {
