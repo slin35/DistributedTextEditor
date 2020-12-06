@@ -392,6 +392,11 @@ func main() {
 
 	})
 
+	// When a Delete event is sent
+	server.OnEvent("/", "Delete", func(s socketio.Conn, dltItem string) {
+		fmt.Println("Received Delete for: ", dltItem)
+	})
+
 	// Server receives a new sequence action (insert, delete, or insert and delete)
 	server.OnEvent("/", "Delta", func(s socketio.Conn, delta string) {
 		d := []byte(delta)

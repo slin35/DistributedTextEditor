@@ -118,10 +118,14 @@
         if(deltaOperation == "insert") {
           console.log("looking for : ", retain, " in (", crdt.body.length ,"): ", JSON.stringify(crdt.body))
           var prevPosition = JSON.parse(JSON.stringify(crdt.body[retain].Position)) // sketchy deep cloning
-          prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
-            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
-            ...{"Site" : myID}
-          })
+          if(prevPosition[prevPosition.length -1].Site = myID) { // last character was mine
+            prevPosition[prevPosition.length -1].Pos +=1
+          } else {
+            prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
+              ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+              ...{"Site" : myID}
+            })
+          }
           crdt.body.splice(retain+1, 0, {
               ...{"Position" : prevPosition},
               ...{
@@ -156,10 +160,14 @@
 
         // Prepare insert first, and then delete
         var prevPosition = JSON.parse(JSON.stringify(crdt.body[retain].Position)) // sketchy deep cloning
-        prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
-            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
-            ...{"Site" : myID}
-          })
+        if(prevPosition[prevPosition.length -1].Site = myID) { // last character was mine
+            prevPosition[prevPosition.length -1].Pos +=1
+          } else {
+            prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
+              ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+              ...{"Site" : myID}
+            })
+          }
         for( var i = retain+1; i <= retain+del; i++) {
           console.log("Deleting ", crdt.body[i]["Char"], " at pos: ", crdt.body[i]["Position"])
           deleteChars.push( {"char": crdt.body[i]["Char"], "pos" : crdt.body[i]["Position"]})
@@ -186,7 +194,13 @@
     console.log("data: ", JSON.stringify(data));
     console.log("text change from source:", source);
     console.log("Any delete operations?: ", deleteChars)
+    // TODO: SEND THESE DELETE OPERATIONS INDIVIDUALLY (CAUSE CRDT IS CHAR BASED)
     if(source == "user") {
+      deleteChars.forEach(function(item, index) {
+        console.log(index, item)
+        // SEND DELETE HERE>
+        socket.emit("Delete", JSON.stringify(item))
+      })
       console.log("Emitting a delta : ", JSON.stringify(delta))
       socket.emit("Delta", JSON.stringify(delta))
       socket.emit("Content", JSON.stringify(data));
