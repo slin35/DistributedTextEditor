@@ -43,19 +43,22 @@ type Doc struct {
 }
 
 type Identifier struct {
-	pos  int
-	site int
+	Pos  int
+	Site int
 }
 
 type Character struct {
-	position []Identifier
-	lamport  int
-	char     string
+	Position []Identifier
+	Lamport  int
+	Char     string
 }
 
 var currentText string = ""
 var currentID int = 0
 var userTextDir = make(map[int]string)
+
+// this has to be changed to math.MaxInt32 if run on a 32 bit system
+var maxInt = math.MaxInt64
 
 var doc Doc
 
@@ -65,17 +68,21 @@ func loadPage() (*Page, error) {
 }
 
 func initBody() {
-	beg := Character{lamport: -1,
-		char: ""}
-	beg.position[0] = Identifier{pos: 0, site: -1}
+	doc.Body = make([]Character, 1)
+	beg := Character{Position: make([]Identifier, 1),
+		Lamport: -1,
+		Char:    ""}
+	beg.Position[0] = Identifier{Pos: 1, Site: -1}
 
-	end := Character{lamport: -1,
-		char: ""}
+	end := Character{Position: make([]Identifier, 1),
+		Lamport: -1,
+		Char:    ""}
 	// this has to be changed to math.MaxInt32 if run on a 32 bit system
-	end.position[0] = Identifier{pos: int(math.MaxInt64), site: -1}
+	end.Position[0] = Identifier{Pos: int(maxInt), Site: -1}
 
 	doc.Body[0] = beg
-	doc.Body[1] = end
+	// doc.Body[1] = end // not sure if we need an end.
+	fmt.Println(doc.Body)
 }
 
 func min(a, b int) int {
@@ -117,14 +124,14 @@ func comparePosition(id1 []Identifier, id2 []Identifier) int {
 }
 
 func compareIdentifier(i1 Identifier, i2 Identifier) int {
-	if i1.pos < i2.pos {
+	if i1.Pos < i2.Pos {
 		return -1
-	} else if i1.pos > i2.pos {
+	} else if i1.Pos > i2.Pos {
 		return 1
 	} else {
-		if i1.site < i2.site {
+		if i1.Site < i2.Site {
 			return -1
-		} else if i1.site > i2.site {
+		} else if i1.Site > i2.Site {
 			return 1
 		} else {
 			return 0
@@ -132,16 +139,16 @@ func compareIdentifier(i1 Identifier, i2 Identifier) int {
 	}
 }
 
-func fromIdentifierList(identifiers []Identifier) []int {
+func identifierToList(identifiers []Identifier) []int {
 	returnArr := make([]int, len(identifiers))
 	for _, ident := range identifiers {
-		returnArr = append(returnArr, ident.pos)
+		returnArr = append(returnArr, ident.Pos)
 	}
 	return returnArr
 }
 
 // Arrays are representations of floats, subtract the floats
-func subtractGreaterThan(n1 []int, n2 []int) []int {
+func floatSubtract(n1 []int, n2 []int) []int {
 	var carry = 0 // carry over in subtraction
 	diff := make([]int, maxArrayLength(n1, n2))
 	for i := len(diff) - 1; i >= 0; i-- {
@@ -160,7 +167,7 @@ func subtractGreaterThan(n1 []int, n2 []int) []int {
 	return diff
 }
 
-func add(n1 []int, n2 []int) []int {
+func floatAdd(n1 []int, n2 []int) []int {
 	var carry = 0
 	diff := make([]int, maxArrayLength(n1, n2))
 	for i := len(diff) - 1; i >= 0; i-- {
@@ -169,12 +176,12 @@ func add(n1 []int, n2 []int) []int {
 		diff[i] = sum % 256
 	}
 	if carry != 0 {
-		log.Fatal("Adding two positions results in a greater than 1 pos, this can't  be done.")
+		log.Fatal("Adding two positions results in a greater than 1 pos, this can't be done.")
 	}
 	return diff
 }
 
-func increment(n1 []int, delta []int) []int {
+func floatIncrement(n1 []int, delta []int) []int {
 	var firstNonzero = -1
 	for i, num := range delta {
 		if num > 0 {
@@ -182,25 +189,25 @@ func increment(n1 []int, delta []int) []int {
 		}
 	}
 	var inc = append(delta[0:firstNonzero], []int{0, 1}...)
-	var v1 = add(n1, inc)
+	var v1 = floatAdd(n1, inc)
 	var v2 []int
 	if v1[len(v1)-1] == 0 {
-		v2 = add(v1, inc)
+		v2 = floatAdd(v1, inc)
 	} else {
 		v2 = v1
 	}
 	return v2
 }
 
-func toIdentifierList(n []int, before []Identifier, after []Identifier, site int) []Identifier {
+func listToIdentifier(n []int, before []Identifier, after []Identifier, site int) []Identifier {
 	var returnArr []Identifier
 	for i, num := range n {
 		if i == len(n)-1 {
 			returnArr[i] = Identifier{num, site}
-		} else if i < len(before) && num == before[i].pos {
-			returnArr[i] = Identifier{num, before[i].site}
-		} else if i < len(after) && num == after[i].pos {
-			returnArr[i] = Identifier{num, after[i].site}
+		} else if i < len(before) && num == before[i].Pos {
+			returnArr[i] = Identifier{num, before[i].Site}
+		} else if i < len(after) && num == after[i].Pos {
+			returnArr[i] = Identifier{num, after[i].Site}
 		} else {
 			returnArr[i] = Identifier{num, site}
 		}
@@ -208,7 +215,7 @@ func toIdentifierList(n []int, before []Identifier, after []Identifier, site int
 	return returnArr
 }
 
-func generatePositionBetween(pos1 []Identifier, pos2 []Identifier, site int) []Identifier {
+func genPos(pos1 []Identifier, pos2 []Identifier, site int) []Identifier {
 	var head1 Identifier
 	var head2 Identifier
 	if len(pos1) == 0 {
@@ -217,30 +224,29 @@ func generatePositionBetween(pos1 []Identifier, pos2 []Identifier, site int) []I
 		head1 = pos1[0]
 	}
 	if len(pos2) == 0 {
-		head2 = Identifier{int(^uint(0) >> 1), site} // max_int
+		head2 = Identifier{maxInt, site}
 	} else {
 		head2 = pos2[0]
 	}
-	if head1.pos != head2.pos {
-		var n1 = fromIdentifierList(pos1)
-		var n2 = fromIdentifierList(pos2)
-		var delta = subtractGreaterThan(n2, n1)
+	if head1.Pos != head2.Pos {
+		var n1 = identifierToList(pos1)
+		var n2 = identifierToList(pos2)
+		var delta = floatSubtract(n2, n1)
 
-		var next = increment(n1, delta)
-		return toIdentifierList(next, pos1, pos2, site)
+		var next = floatIncrement(n1, delta)
+		return listToIdentifier(next, pos1, pos2, site)
+	}
+	if head1.Site < head2.Site {
+		sliced := pos1[1:]
+		recurPos := genPos(sliced, []Identifier{}, site)
+		return append([]Identifier{head1}, recurPos...)
+	} else if head1.Site == head2.Site {
+		sliced1 := pos1[1:]
+		sliced2 := pos2[1:]
+		recurPos := genPos(sliced1, sliced2, site)
+		return append([]Identifier{head1}, recurPos...)
 	} else {
-		if head1.site < head2.site {
-			sliced := pos1[1:]
-			recurPos := generatePositionBetween(sliced, []Identifier{}, site)
-			return append([]Identifier{head1}, recurPos...)
-		} else if head1.site == head2.site {
-			sliced1 := pos1[1:]
-			sliced2 := pos2[1:]
-			recurPos := generatePositionBetween(sliced1, sliced2, site)
-			return append([]Identifier{head1}, recurPos...)
-		} else {
-			log.Fatal("Cannot generate position at given site: ", site)
-		}
+		log.Fatal("Cannot generate position at given site : ", site)
 	}
 
 	return nil
@@ -335,6 +341,7 @@ func main() {
 	/*	var curContent = map[string]interface{}{
 		"ops": map[string]interface{}{},
 	} */
+	initBody()
 
 	server := socketio.NewServer(nil)
 
@@ -342,8 +349,11 @@ func main() {
 		fmt.Println("connected user with id ", s.ID())
 
 		s.Emit("initContent", curContent)
+		s.Emit("crdtTransfer", doc)
+		s.Emit("initID", s.ID())
 
 		s.Join("bcast")
+		s.Join(s.ID()) // Joins room with its own ID in order for server to send client specific messages
 		return nil
 	})
 
@@ -351,6 +361,7 @@ func main() {
 		fmt.Println("disconnected user with id", s.ID(), " because: ", reason)
 	})
 
+	// Server receives a new string
 	server.OnEvent("/", "Content", func(s socketio.Conn, content string) {
 		//	curContent += "/" + content
 
@@ -374,20 +385,30 @@ func main() {
 			fmt.Println("Receiving content from : ", s.ID())
 			fmt.Println("curContent: ", curContent)
 			fmt.Println("content: ", content)
+			server.BroadcastToRoom("", s.ID(), "dirMsg", "HI")
 			server.BroadcastToRoom("", "bcast", "toAll", content)
 			curContent = content
 		}
 
 	})
 
+	// Server receives a new sequence action (insert, delete, or insert and delete)
 	server.OnEvent("/", "Delta", func(s socketio.Conn, delta string) {
 		d := []byte(delta)
 		var oneHistory TextBody
 		if err := json.Unmarshal(d, &oneHistory); err != nil {
 			panic(err)
 		}
-		fmt.Print("RECEIVED DELTA: ")
-		fmt.Println(oneHistory)
+
+		// TODO: UPDATE BODY TEXT HERE (CRDT):
+		fmt.Println("RECEIVED DELTA FROM ", s.ID(), " : ")
+		for _, ele := range oneHistory.Ops {
+			fmt.Println("Insert: ", ele.Insert)
+			fmt.Println("Delete: ", ele.Delete)
+			fmt.Println("Retain: ", ele.Retain)
+			fmt.Println()
+		}
+		// fmt.Println(oneHistory)
 
 		// var op Operation
 		// for i := 0; i < len(data); i++ {

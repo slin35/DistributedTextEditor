@@ -36,7 +36,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
 <!-- Initialize Quill editor -->
 <script>
-  const socket = io('ws://localhost:8080');
+  class CRDT {
+    constructor(body) {
+      this.body = body
+    }
+  }
+
+  // const io = require("socket.io-client")
+  const socket = io('ws://localhost:8080', {
+    reconnectionDelay:20000 // long reconnection delay
+  });
   // const socket = io('ws://192.168.0.163:8080');
 
   var quill = new Quill('#editor', {
@@ -45,6 +54,8 @@
   });
   // getting the content from user
   var content = quill.root.children[0].innerHTML;
+  var crdt = new CRDT([])
+  var myID = -1
 
   // --- this prevents page reload but doesn't submit the form
   // var form = document.getElementById("textForm")
@@ -72,8 +83,109 @@
     //     ...{"data" : delta["ops"][1][Object.keys(delta["ops"][1])[0]]}
     //   })
     // }
+
+    console.log("local delta: ", JSON.stringify(delta))
+    var deleteChars = [] // Delete char for when multiple characters are deleted at the same time.
+    // UPDATING CRDT FOR LOCAL CHANGES ONLY
+    if(source == "user"){
+      if(delta["ops"].length == 1){ // length of 1 is always the first insert or a whole delete
+        var deltaOperation = Object.keys(delta["ops"][0])[0]
+        if(deltaOperation == "insert") {
+          var prevPosition = JSON.parse(JSON.stringify(crdt.body[0].Position)) // sketchy deep cloning
+          prevPosition.push({
+            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+            ...{"Site" : myID}
+          })
+          crdt.body.push(
+            {
+              ...{"Position" : prevPosition},
+              ...{
+                "Lamport" : -2 // figure out lamport when this is working
+              },
+              ...{
+                "Char" : delta["ops"][0]["insert"][0]
+              }
+            }
+          )
+        } else { // whole string delete
+          crdt.body.splice(1,crdt.body.length) // removes deleted chars
+        }
+      } else if (delta["ops"].length == 2) { // for an insert or delete w/ retain
+        // retain always index 0, insert/delete index 1
+        var retain = delta["ops"][0]["retain"] // JS arr using 0 indexing
+        var deltaOperation = Object.keys(delta["ops"][1])[0]
+        console.log("Delta Operation: ", deltaOperation, " with val : ", delta["ops"][1][deltaOperation])
+        if(deltaOperation == "insert") {
+          console.log("looking for : ", retain, " in (", crdt.body.length ,"): ", JSON.stringify(crdt.body))
+          var prevPosition = JSON.parse(JSON.stringify(crdt.body[retain].Position)) // sketchy deep cloning
+          prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
+            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+            ...{"Site" : myID}
+          })
+          crdt.body.splice(retain+1, 0, {
+              ...{"Position" : prevPosition},
+              ...{
+                "Lamport" : -2 // figure out lamport when this is working
+              },
+              ...{
+                "Char" : delta["ops"][1][deltaOperation][0]
+              }
+            })
+          console.log("LOCAL CRDT just inserted: ", delta["ops"][1][deltaOperation][0])
+        } else { // delete
+          var del = delta["ops"][1][deltaOperation]
+          console.log(delta["ops"][1])
+          console.log("Deleting at ", retain," for ", del)
+          for( var i = retain+1; i <= retain+del; i++) {
+            console.log("Deleting ", crdt.body[i]["Char"], " at pos: ", crdt.body[i]["Position"])
+            deleteChars.push( {"char": crdt.body[i]["Char"], "pos" : crdt.body[i]["Position"]})
+          }
+          crdt.body.splice(retain+1,del) // removes deleted chars
+          console.log("Deleting these chars: ", deleteChars)
+        }
+      } else { // insert + delete + retain (replacing string with another string)
+        // always same indexing: 0 - retain, 1 - insert, 2 - delete
+        console.log("retain = ", delta["ops"][0]["retain"])
+        console.log("insert = ", delta["ops"][1]["insert"])
+        console.log("delete = ", delta["ops"][2]["delete"])
+        var retain = delta["ops"][0]["retain"]
+        var del = delta["ops"][2]["delete"]
+
+
+        console.log("looking for : ", retain, " in (", crdt.body.length ,"): ", JSON.stringify(crdt.body))
+
+        // Prepare insert first, and then delete
+        var prevPosition = JSON.parse(JSON.stringify(crdt.body[retain].Position)) // sketchy deep cloning
+        prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
+            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+            ...{"Site" : myID}
+          })
+        for( var i = retain+1; i <= retain+del; i++) {
+          console.log("Deleting ", crdt.body[i]["Char"], " at pos: ", crdt.body[i]["Position"])
+          deleteChars.push( {"char": crdt.body[i]["Char"], "pos" : crdt.body[i]["Position"]})
+        }
+        crdt.body.splice(retain+1,del) // removes deleted chars
+        prevPosition.push({  // insert @ (retain+1) index (+1 for "" in beginning)
+            ...{"Pos" : prevPosition[prevPosition.length -1].Pos + 1},
+            ...{"Site" : myID}
+          })
+        crdt.body.splice(retain+1, 0, {
+            ...{"Position" : prevPosition},
+            ...{
+              "Lamport" : -2 // figure out lamport when this is working
+            },
+            ...{
+              "Char" : delta["ops"][1]["insert"][0]
+            }
+          })
+      }
+      console.log("updated crdt: ", JSON.stringify(crdt.body))
+    }
+
+
     console.log("data: ", JSON.stringify(data));
     console.log("text change from source:", source);
+    console.log("Any delete operations?: ", deleteChars)
     if(source == "user") {
       console.log("Emitting a delta : ", JSON.stringify(delta))
       socket.emit("Delta", JSON.stringify(delta))
@@ -106,6 +218,21 @@
       quill.setText(text);
       quill.setSelection(curCursorRange);
     } 
+  })
+
+  socket.on("dirMsg", function(content) {
+    console.log("ARRIVED TEST : ", content)
+  })
+
+  // For updating our CRDT with server CRDT since server always correct :) 
+  socket.on("crdtTransfer", function(content) {
+    crdt.body = content.Body
+    console.log("local init crdt: ", crdt)
+  })
+
+  socket.on("initID", function(content) {
+    myID = parseInt(content)
+    console.log("My ID is : ", myID)
   })
 
   socket.on("initContent", function(content) {
