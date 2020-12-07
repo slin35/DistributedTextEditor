@@ -17,3 +17,8 @@ go build editor.go
 chmod u+x editor
 ./editor
 ```
+
+### Windows & Mac
+Go to localhost:8080 after running the windows or mac specific execution command.
+Multiple tabs, windows, or browsers can be opened to create multiple clients
+Modifications made on the document in one view will be reflected in the other views.
